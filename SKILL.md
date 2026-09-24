@@ -95,3 +95,14 @@ Verified end-to-end 2026-09 (npm omniroute v3.8.5x, Node 22, Linux).
   or written anywhere new.
 - Override-free on purpose: if the guard blocks, the correct move is to fix the condition
   (unfund / remove paid legs), never to bypass it.
+
+## Termux / Android (platform-agnostic)
+- `install.sh` auto-detects Termux (`$PREFIX` + `pkg`) and adapts: `curl`-based port
+  check (no `ss`), no `setsid` (no util-linux on stock Termux), and it prints the
+  `termux-wake-lock` / `.termux/boot/omniroute.sh` recipe instead of `omniroute autostart`
+  (no systemd on Android — Android kills background procs when the app closes).
+- Prereqs: `pkg install -y nodejs python make clang curl git`. `clang`+`make` are what
+  compile the native `better-sqlite3` module — a Termux install failure that says
+  "port not up yet" is almost always that; install the toolchain and re-run `npm i -g omniroute`.
+- Keep-alive: `termux-wake-lock` (+ a `.termux/boot/omniroute.sh` with `omniroute serve`
+  for app-start restart).

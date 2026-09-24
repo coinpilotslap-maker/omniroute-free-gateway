@@ -87,6 +87,32 @@ Horde as an opt-in bonus you enable with a free key. Either way: no money, no ca
   known dead-end in current builds — the reliable locks are the combo + unfunded key
   (see SKILL.md).
 
-## License
+## Termux / Android (platform-agnostic)
 
+The installer detects Termux automatically (via `$PREFIX` + `pkg`) and adapts:
+port check falls back to `curl` (no `ss`), the server starts without `setsid`
+(no util-linux on stock Termux), and instead of systemd it tells you to use
+`termux-wake-lock` + a `.termux/boot/` script, because Android reaps background
+processes when the app is closed.
+
+One-line prerequisites before `bash install.sh`:
+
+```bash
+pkg install -y nodejs python make clang curl git
+```
+
+- `clang`+`make` build the native `better-sqlite3` module inside OmniRoute.
+- `python` runs the fail-closed billing guard.
+- `curl` is the universal port check (used on every platform).
+
+```bash
+OMNIROUTE_OPENROUTER_KEY=sk-or-... bash install.sh   # same one command as desktop
+termux-wake-lock                                      # keep the gateway alive in background
+mkdir -p ~/.termux/boot && echo "omniroute serve" > ~/.termux/boot/omniroute.sh
+```
+
+If the server fails to start on Termux it is almost always the native module —
+run `pkg install -y nodejs python make clang` and retry `npm i -g omniroute`.
+
+## License
 MIT

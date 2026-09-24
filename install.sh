@@ -52,6 +52,31 @@ warn() { echo "  ! $*"; }
 fail() { echo "  ✗ $*" >&2; exit 1; }
 step() { echo; echo "== $*"; }
 
+# ---------------------------------------------------------------- platform detection
+# TERMUX=1 on Android (Termux). Desktop Linux/BSD/Mac get TERMUX=0.
+# Differences the stack must absorb:
+#   - no `ss` (port check)      -> use curl to 127.0.0.1:20128 instead
+#   - npm global builds native better-sqlite3 -> needs the Termux toolchain (pkg)
+#   - no systemd / `omniroute autostart`       -> Android reaps background procs; keep
+#     the Termux session alive (termux-wake-lock) so the gateway survives the app
+TERMUX=0
+if [ -n "${PREFIX:-}" ] && command -v pkg >/dev/null 2>&1 && [ -f "$PREFIX/etc/termux" ]; then
+  TERMUX=1
+fi
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# Portable "is the gateway actually serving" check: prefer curl (works everywhere,
+# catches half-dead listeners); fall back to `ss` where curl is absent.
+server_up() {
+  if have curl; then
+    [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:20128/ 2>/dev/null)" != "000" ]
+  elif have ss; then
+    ss -tln 2>/dev/null | grep -q ":20128"
+  else
+    echo "  ✗ need curl or ss to check the port (Termux: pkg install curl)" >&2; return 2
+  fi
+}
+
 # ---------------------------------------------------------------- step 1: omniroute
 step "1/5 OmniRoute installed"
 if command -v omniroute >/dev/null 2>&1; then
@@ -60,10 +85,19 @@ elif [ -x "$HOME/.local/bin/omniroute" ] && [ -d "$HOME/.local/lib/node_modules/
   export PATH="$HOME/.local/lib/node_modules/.bin:$HOME/.local/bin:$PATH"
   ok "found under ~/.local (added to PATH)"
 else
+  if [ "$TERMUX" = "1" ] && ! (command -v node >/dev/null 2>&1); then
+    fail "Termux: install the base stack first (one line):
+    pkg install -y nodejs python make clang
+    (clang+make are needed to build better-sqlite3, a native module)"
+  fi
   if command -v npm >/dev/null 2>&1; then
     echo "  … not found — installing via npm (global)"
-    npm i -g omniroute >/dev/null 2>&1 || npm i -g omniroute || fail "npm install failed"
-    command -v omniroute >/dev/null 2>&1 || export PATH="$(npm prefix -g)/bin:$HOME/.local/lib/node_modules/.bin:$PATH"
+    if [ "$TERMUX" = "1" ]; then
+      command -v clang >/dev/null 2>&1 || command -v g++ >/dev/null 2>&1 \
+        || fail "Termux: native build needs a C compiler — pkg install -y clang make (or: pkg install -y libsqlite436 and try again)"
+    fi
+    npm i -g omniroute >/dev/null 2>&1 || npm i -g omniroute || fail "npm install failed (Termux: check pkg install nodejs python make clang; desktop: Node >= 22)"
+    command -v omniroute >/dev/null 2>&1 || export PATH="$(npm prefix -g)/bin:$HOME/.local/lib/node_modules/.bin:$PREFIX/lib/node_modules/.bin:$PATH"
     ok "installed"
   else
     fail "omniroute not installed and no npm available (needs Node >= 22; then: npm i -g omniroute)"
@@ -72,27 +106,37 @@ fi
 
 # ---------------------------------------------------------------- step 2: server
 step "2/5 OmniRoute server on :20128"
-server_up() {
-  ss -tln 2>/dev/null | grep -q ":20128" || return 1
-  # port bound AND actually serving (not a half-dead listener)
-  [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:20128/ 2>/dev/null)" != "000" ]
-}
 if [ "$START_SERVER" = "1" ]; then
   if server_up; then
     ok "already listening"
   else
     echo "  … starting detached (no PTY — a PTY session ending kills it via SIGHUP)"
-    nohup setsid omniroute serve >/dev/null 2>&1 &
-    for i in $(seq 1 30); do
+    # Desktop: nohup+setsid detaches from the PTY. Termux stock has no setsid;
+    # plain background start is enough there (we rely on termux-wake-lock instead).
+    if [ "$TERMUX" = "1" ]; then
+      omniroute serve >/dev/null 2>&1 &
+    else
+      nohup setsid omniroute serve >/dev/null 2>&1 &
+    fi
+    for i in $(seq 1 45); do
       sleep 1; server_up && break
     done
-    server_up || {
-      warn "port not up yet — 'omniroute autostart' (systemd) recommended for reboot survival:"
-      warn "the server DIES when a PTY that started it is closed; check ~/.omniroute/logs/"
-      exit 2
-    }
+    if ! server_up; then
+      if [ "$TERMUX" = "1" ]; then
+        fail "port not up yet — on Termux this is usually a native-module build problem (better-sqlite3).
+    Run: pkg install -y nodejs python make clang, then retry 'npm i -g omniroute' and re-run this script."
+      else
+        fail "port not up yet — check ~/.omniroute/logs/"
+      fi
+    fi
     ok "started"
-    warn "run 'omniroute autostart' once for systemd auto-start + self-heal"
+    if [ "$TERMUX" = "1" ]; then
+      warn "Android reaps background processes when the app is closed. Keep the gateway alive:"
+      warn "  termux-wake-lock            (hold the CPU; background procs keep running)"
+      warn "  auto-restart on app start: mkdir -p \$HOME/.termux/boot && echo 'omniroute serve' > \$HOME/.termux/boot/omniroute.sh"
+    else
+      warn "run 'omniroute autostart' once for systemd auto-start + self-heal"
+    fi
   fi
 fi
 
