@@ -74,6 +74,14 @@ Verified end-to-end 2026-09 (npm omniroute v3.8.5x, Node 22, Linux).
   live completion, `omniroute cost` ledger). Before that, an empty gateway just turns working
   inference into 502s.
 
+## Hermes wiring (the take-over) — focus only on OmniRoute
+- `scripts/wire-hermes.sh`: Hermes points ONLY at the gateway — the `free-only` combo entry
+  `{provider: custom, model: free-only, base_url: http://127.0.0.1:20128/v1}` is the sole new
+  layer; NO direct-OpenRouter fallback entries (OpenRouter lives inside the combo, whose ~20-leg
+  priority chain absorbs per-model 429s). `--primary` swaps the primary to the $0 combo and keeps
+  the old LLM as last-resort fallback (config backed up first; only `hermes config set`, never
+  hand-edits; re-runs are idempotent and never delete your existing fallbacks).
+
 ## Billing guard (fail-closed, run before anything)
 - `scripts/guard-free-only.py` is the money gate: it blocks (exit 1, no override by design) if
   ANY of — (1) the OpenRouter account is no longer unfunded (`total_credits` > 0,
