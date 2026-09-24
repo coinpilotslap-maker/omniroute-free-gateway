@@ -33,8 +33,8 @@ cat ~/.config/omniroute/openrouter.key | omniroute providers add openrouter --cr
 curl -sH "Authorization: Bearer $(cat ~/.config/omniroute/openrouter.key)" \
      https://openrouter.ai/api/v1/key | python3 -m json.tool | grep -E 'is_free_tier|limit|total_credits'
 
-# 4) build the free-only combo
-bash scripts/build-free-combo.sh          # fetches :free models, writes legs, creates+activates combo
+# 4) build the free-only combo (runs the fail-closed billing guard first)
+bash scripts/build-free-combo.sh          # guard → fetch :free models → create+activate combo
 
 # 5) prove it: live $0 call through the gateway
 curl -fsS http://127.0.0.1:20128/v1/chat/completions \
@@ -57,8 +57,9 @@ Then point your agent (Hermes, Codex, any OpenAI-compatible client) at
 | Path | Purpose |
 |---|---|
 | `SKILL.md` | The full procedural skill: install, wiring, combo lock, gotchas, dead-end warnings |
-| `scripts/build-free-combo.sh` | Enumerate OpenRouter `:free` models → create + activate the `free-only` combo |
-| `scripts/verify-free.sh` | 3-part proof a fresh connection works: provider test + live call + cost ledger |
+| `scripts/build-free-combo.sh` | Enumerate OpenRouter `:free` models → create + activate the `free-only` combo (guard runs first) |
+| `scripts/verify-free.sh` | Billing guard + 3-part proof: server health, provider test, live $0 call, cost ledger |
+| `scripts/guard-free-only.py` | Fail-closed money gate: blocks any script if the account is funded, a combo has a paid leg, or posture can't be verified. Read-only; touches no card/payment data. No override by design. |
 | `examples/free_legs.example.json` | What the combo-leg JSON looks like |
 | `README.md` | This file |
 

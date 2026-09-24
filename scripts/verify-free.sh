@@ -8,6 +8,10 @@ set -uo pipefail
 
 MODEL="${1:-north-mini-code:free}"
 
+echo "== 0/4 billing guard (fail-closed) =="
+python3 "$(dirname "$0")/guard-free-only.py" || exit 1
+
+echo
 echo "== 1/3 omniroute server health =="
 HEALTH_OUT="$(omniroute health 2>&1 | grep -viE 'Loaded env|STORAGE|📋')"
 if ! echo "$HEALTH_OUT" | grep -qiE 'healthy|uptime|running'; then

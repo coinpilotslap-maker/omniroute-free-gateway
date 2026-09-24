@@ -7,6 +7,11 @@ set -euo pipefail
 COMBO_NAME="${1:-free-only}"
 KEY_FILE="${OMNIROUTE_KEY_FILE:-$HOME/.config/omniroute/openrouter.key}"
 [ -f "$KEY_FILE" ] || { echo "ERROR: key file not found: $KEY_FILE" >&2; exit 1; }
+
+# 0) fail-closed billing guard: block if account funded, combo has paid legs, or posture unverifiable.
+#    Also proves this script touches no card/payment data.
+python3 "$(dirname "$0")/guard-free-only.py" || exit 1
+
 KEY="$(cat "$KEY_FILE")"
 
 # 1) enumerate live :free models from OpenRouter

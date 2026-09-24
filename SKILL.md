@@ -73,3 +73,17 @@ Verified end-to-end 2026-09 (npm omniroute v3.8.5x, Node 22, Linux).
   live free-model call through the gateway succeeds (3-part proof: `providers test` pass,
   live completion, `omniroute cost` ledger). Before that, an empty gateway just turns working
   inference into 502s.
+
+## Billing guard (fail-closed, run before anything)
+- `scripts/guard-free-only.py` is the money gate: it blocks (exit 1, no override by design) if
+  ANY of — (1) the OpenRouter account is no longer unfunded (`total_credits` > 0,
+  `is_free_tier` false, or a key credit `limit` set), (2) any combo in
+  `~/.omniroute/storage.sqlite` contains a non-`:free`/non-keyless leg, or (3) the billing
+  posture cannot be verified at all (network/parse failure → fail-closed).
+  `build-free-combo.sh` and `verify-free.sh` both run it as step 0.
+- The guard is strictly READ-ONLY: one `GET https://openrouter.ai/api/v1/key` plus a read-only
+  open of the local sqlite. No script in this repo accepts, transmits, or stores card/payment
+  data — the only secret involved is the OpenRouter key file, and it is never echoed, logged,
+  or written anywhere new.
+- Override-free on purpose: if the guard blocks, the correct move is to fix the condition
+  (unfund / remove paid legs), never to bypass it.
