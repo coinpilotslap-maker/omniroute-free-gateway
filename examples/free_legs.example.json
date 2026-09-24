@@ -1,0 +1,7 @@
+[
+  {"kind": "model", "model": "z-ai/glm-5.2:free", "providerId": "openrouter", "weight": 0},
+  {"kind": "model", "model": "qwen/qwen3.8-27b:free", "providerId": "openrouter", "weight": 0},
+  {"kind": "model", "model": "cohere/north-mini-code:free", "providerId": "openrouter", "weight": 0},
+  {"kind": "model", "model": "nvidia/nemotron-3.5-lightning:free", "providerId": "openrouter", "weight": 0},
+  {"kind": "model", "model": "google/gemma-4-31b-it:free", "providerId": "openrouter", "weight": 0}
+]

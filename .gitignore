@@ -1,0 +1,11 @@
+# secrets — never commit a key
+*.key
+openrouter.key
+*.env
+
+# os / tooling noise
+.DS_Store
+__pycache__/
+*.pyc
+node_modules/
+.omniroute/
