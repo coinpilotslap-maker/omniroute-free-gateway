@@ -68,15 +68,22 @@ Key sourcing order: `OMNIROUTE_OPENROUTER_KEY` env → `~/.config/omniroute/open
 | `SKILL.md` | The full procedural skill: install, wiring, combo lock, gotchas, dead-end warnings |
 | `examples/free_legs.example.json` | What the combo-leg JSON looks like |
 
-## Why "noauth" ≠ "no key"
+## Why "noauth" is a bonus, not the standard
 
-The noauth gold (AI Horde) is a volunteer mesh: **no card, no credits, no billing
-surface — but the text API wants a free account `apikey` header** (fully-anonymous
-submit is flaky server-side; verified 2026-09 against its live OpenAPI spec, and the
-real endpoints are `/api/v2/stats/text/models` & `/api/v2/generate/text/*` — the
-classical `/model/list` URL never existed). That's why this repo keeps the OpenRouter
-free key as the *standard* source (one 30-second signup, $0 forever) and treats
-Horde as an opt-in bonus you enable with a free key. Either way: no money, no card.
+AI Horde is the volunteer mesh: **no card, no credits, no billing surface — but it is
+kudos-gated, not truly keyless.** Verified 2026-09 against the live API:
+
+- The classical `/model/list` URL never existed; the real endpoints are
+  `/api/v2/status/models`, `/api/v2/stats/text/models`, `/api/v2/generate/text/*`.
+- Anonymous keys (`4444444444`, `anonymous`, `anon`, `guest`, `public`) pass auth but
+  **no job is ever created** — a free *account* key (aihorde.net/register, no card) is
+  the minimum, and kudos buys queue priority.
+- OmniRoute's built-in `aihorde` provider is **image-only**, so Horde is not an
+  LLM-token source for this stack even with a key.
+
+That's why the **standard** source is the OpenRouter free key (one 30-second signup,
+$0 forever) and Horde stays an opt-in bonus you enable with `--with-aihorde` + a free
+account key. Either way: no money, no card.
 
 ## Expectations on "free"
 

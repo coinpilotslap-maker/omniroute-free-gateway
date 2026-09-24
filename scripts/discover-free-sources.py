@@ -95,11 +95,24 @@ def discover_openrouter() -> list:
 
 
 def discover_aihorde(with_key: bool) -> list:
-    """Optional bonus source: the AI Horde volunteer mesh ($0, no card, no billing).
-    Reachability via the live text-model stats endpoint; legs only when a free Horde key
-    is present, because text submit now requires an `apikey` header."""
+    """Bonus source: the AI Horde volunteer mesh ($0, no card, no billing surface).
+
+    Verified 2026-09 against the live API:
+      - the classical /model/list URL NEVER existed; the real endpoints are
+        /api/v2/status/models, /api/v2/stats/text/models, /api/v2/generate/text/*
+      - text generation requires a real account `apikey` (kudos-gated): the
+        anonymous keys (4444444444, anonymous, anon, guest, public) pass auth
+        but NO job is ever created (404 "job does not exist" on submit).
+      - OmniRoute's built-in `aihorde` provider is IMAGE-only, so Horde is not
+        an LLM-token source for this stack even with a key.
+    Hence: we only emit Horde legs when a REAL account key is present
+    (OMNIROUTE_AIHORDE_KEY or ~/.config/omniroute/aihorde.key) AND reachable.
+    A free account (aihorde.net/register, no card) is the minimum; kudos buys
+    queue priority — new accounts may wait long in queue.
+    """
     if not with_key:
-        print("  aihorde: skipped (pass --with-aihorde to include the noauth mesh)", file=sys.stderr)
+        print("  aihorde: skipped (pass --with-aihorde; bonus image-mesh, not LLM tokens)",
+              file=sys.stderr)
         return []
     try:
         stats = http_json(AHORDE_TEXT_STATS)
@@ -111,13 +124,16 @@ def discover_aihorde(with_key: bool) -> list:
     key = (os.environ.get("OMNIROUTE_AIHORDE_KEY", "")
            or find_file_key("~/.config/omniroute/aihorde.key"))
     if not key:
-        print(f"  aihorde: reachable ({len(top)} text models live) but no free Horde key — "
-              f"skipped (text gen needs an `apikey` header; free account at aihorde.net/register, no card).",
-              file=sys.stderr)
+        print(f"  aihorde: reachable ({len(top)} text models live) but no account key — skipped. "
+              f"Kudos-gated: anonymous keys are rejected on submit; free account at "
+              f"aihorde.net/register (no card, no billing). Note: OmniRoute's aihorde "
+              f"provider is image-only; these legs only matter if a compatible LLM-bridge "
+              f"provider is registered.", file=sys.stderr)
         return []
     legs = [{"kind": "model", "model": f"aihorde/{n}", "providerId": "aihorde", "weight": 0}
             for n in top[:MAX_LEGS_PER_SOURCE]]
-    print(f"  aihorde: {len(legs)} noauth-mesh legs (bonus, $0, no card, no credits)", file=sys.stderr)
+    print(f"  aihorde: {len(legs)} mesh legs (bonus, $0, no card; kudos-gated queue)",
+          file=sys.stderr)
     return legs
 
 

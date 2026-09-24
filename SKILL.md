@@ -20,10 +20,18 @@ Verified end-to-end 2026-09 (npm omniroute v3.8.5x, Node 22, Linux).
 
 ## The honest catch (never over-promise "free out of the box")
 - Keyless free providers fail from most hosts: OpenCode free → 403 "only usable from within
-  OpenCode", Felo → 400, AI Horde → API 404 / IP-restricted. So `auto` combo → "All models
-  failed" 502. A working gateway needs ≥1 live upstream.
-- The working free upstream that actually passes from a residential/host IP here:
+  OpenCode", Felo → 400. So `auto` combo → "All models failed" 502. A working gateway needs
+  ≥1 live upstream.
+- The working free upstream that actually passes from a residential/host IP:
   **OpenRouter `:free` models** behind a free-tier key.
+- AI Horde correction (verified 2026-09): it is REACHABLE — the 404s we chased all session
+  were a wrong URL (the classical `/model/list` never existed; real API is
+  `/api/v2/status/models`, `/api/v2/stats/text/models`, `/api/v2/generate/text/*`). But text
+  gen is **kudos-gated**: anonymous keys (4444444444, anonymous, anon, guest, public) pass
+  auth yet no job is ever created (404 on submit). And OmniRoute's built-in `aihorde`
+  provider is **image-only** — so Horde is not an LLM-token source for this stack. Keep it
+  as an opt-in bonus (free account key at aihorde.net, no card) via
+  `discover-free-sources.py --with-aihorde`, not as the standard.
 
 ## Wire OpenRouter free-tier (no card, never billed)
 - Keep the key in a file, add it via stdin so the secret never lands in argv/process tables:
